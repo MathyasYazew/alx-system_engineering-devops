@@ -1,31 +1,28 @@
-!/usr/bin/python3
-"""
-Contains the recurse function
-"""
-
+#!/usr/bin/python3
+'''Get ALL articles for a given subreddit'''
+import pprint
 import requests
+
+BASE_URL = 'http://reddit.com/r/{}/hot.json'
 
 
 def recurse(subreddit, hot_list=[], after=None):
-    """returns a list of all hot post titles for a given subreddit"""
-    if subreddit is None or type(subreddit) is not str:
+    ''' function recurse :Get ALL hot posts'''
+    headers = {'User-agent': 'Unix:0-subs:v1'}
+    params = {'limit': 100}
+    if isinstance(after, str):
+        if after != "STOP":
+            params['after'] = after
+        else:
+            return hot_list
+    response = requests.get(BASE_URL.format(subreddit),
+                            headers=headers, params=params)
+    if response.status_code != 200:
         return None
-    r = requests.get('http://www.reddit.com/r/{}/hot.json'.format(subreddit),
-                     headers={'User-Agent': 'Python/requests:APIproject:\
-                     v1.0.0 (by /u/aaorrico23)'},
-                     params={'after': after}).json()
-    after = r.get('data', {}).get('after', None)
-    posts = r.get('data', {}).get('children', None)
-    if posts is None or (len(posts) > 0 and posts[0].get('kind') != 't3'):
-        if len(hot_list) == 0:
-            return None
-        return hot_list
-    else:
-        for post in posts:
-            hot_list.append(post.get('data', {}).get('title', None))
-    if after is None:
-        if len(hot_list) == 0:
-            return None
-        return hot_list
-    else:
-        return recurse(subreddit, hot_list, after)
+    data = response.json().get('data', {})
+    after = data.get('after', 'STOP')
+    if not after:
+        after = "STOP"
+    hot_list = hot_list + [post.get('data', {}).get('title')
+                           for post in data.get('children', [])]
+    return recurse(subreddit, hot_list, after)
